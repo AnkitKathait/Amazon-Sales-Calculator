@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════
    DATA STORE
    store[y][m][d] = [{ sku, sell, ship, fees, cost, rto }, ...]
-   Profit = sell − ship − fees − cost − rto
+   Profit = sell − ship − fees − cost
 ═══════════════════════════════════════ */
 let store = {};
 
@@ -24,28 +24,24 @@ async function initSupabaseClient() {
   if (supabase) return supabase;
   try {
     console.log('🔗 Initializing Supabase client...');
-    // Try dynamic import first
     let createClient;
     try {
       const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
       createClient = module.createClient;
     } catch (importError) {
       console.warn('ESM import failed, trying alternative method...');
-      // Fallback: try to load from global if available
       if (typeof window.supabase !== 'undefined') {
         createClient = window.supabase.createClient;
       } else {
         throw new Error('Supabase library not available');
       }
     }
-
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log('✅ Supabase client initialized');
     return supabase;
   } catch (error) {
     console.error('❌ Failed to initialize Supabase client:', error);
     console.warn('Continuing without Supabase - data will be local only');
-    // Don't throw - allow app to continue without Supabase
     return null;
   }
 }
@@ -69,7 +65,7 @@ async function loadOrdersFromSupabase() {
         id: o.id,
         sku: o.sku || '',
         sell: Number(o.sell) || 0,
-        ship: Number(o.ship) || 0,
+        ship: Number(o.ship) || DEF_SHIP,
         fees: Number(o.fees) || 0,
         cost: Number(o.cost) || 0,
         rto: Number(o.rto) || 0
@@ -92,13 +88,15 @@ async function saveOrderToSupabase(y, m, d, i) {
       return;
     }
 
+    const { data: { user } } = await sb.auth.getUser();
     const payload = {
+      user_id: user.id,
       year: y,
       month: m,
       day: d,
       sku: row.sku || '',
       sell: row.sell === undefined || row.sell === '' ? 0 : row.sell,
-      ship: row.ship === undefined || row.ship === '' ? 0 : row.ship,
+      ship: (row.ship === undefined || row.ship === '' || row.ship === 0) ? DEF_SHIP : row.ship,
       fees: row.fees === undefined || row.fees === '' ? 0 : row.fees,
       cost: row.cost === undefined || row.cost === '' ? 0 : row.cost,
       rto: row.rto === undefined || row.rto === '' ? 0 : row.rto
@@ -152,14 +150,14 @@ function autoCost(sell) {
   if (sell >= 500)              return 300;
   return 0;
 }
-function autoFees(cost) {
-  if (cost > 0   && cost < 500) return 25.96;
-  if (cost >= 500 && cost < 999) return 53.10;
+function autoFees(sell) {
+  if (sell > 0  && sell < 500) return 25.96;
+  if (sell >= 500)             return 53.10;
   return 0;
 }
 
 function rowProfit(r) {
-  return (r.sell||0) - (r.ship||0) - (r.fees||0) - (r.cost||0) - (r.rto||0);
+  return (r.sell||0) - (r.ship||0) - (r.fees||0) - (r.cost||0);
 }
 
 /* ══════════════════════════════════
@@ -168,7 +166,6 @@ function rowProfit(r) {
 function renderMonth() {
   const y = curY(), m = curM();
 
-  // Update month pill if it exists (desktop version)
   const monthPill = document.getElementById('monthPill');
   if (monthPill) {
     monthPill.textContent = MONTHS[m] + ' ' + y;
@@ -182,7 +179,6 @@ function renderMonth() {
 
   for (let d = 1; d <= days; d++) {
     const dow = wdIdx(y, m, d); // 0=Sun
-    // Start a new week group on Sunday OR first day
     if (d === 1 || dow === 0) {
       weekNum++;
       weekGroup = document.createElement('div');
@@ -341,7 +337,7 @@ function appendRowEl(y, m, d, i, block) {
   tr.className = 'dr';
   tr.id = `row-${y}-${m}-${d}-${i}`;
 
-  const shipVal = r.ship !== undefined ? r.ship : '';
+  const shipVal = r.ship || '';
 
   tr.innerHTML = `
     <td><input class="ci ci-sku" type="text" placeholder="Order name / SKU"
@@ -389,17 +385,7 @@ async function setNum(y, m, d, i, key, val) {
       const costEl = document.getElementById(`cost-${y}-${m}-${d}-${i}`);
       if (costEl) costEl.value = newCost;
     }
-    const newFees = autoFees(rows[i].cost);
-    if (newFees > 0) {
-      rows[i].fees = newFees;
-      const feesEl = document.getElementById(`fees-${y}-${m}-${d}-${i}`);
-      if (feesEl) feesEl.value = newFees;
-    }
-  }
-
-  /* ── AUTO-FILL: Cost → Fees ── */
-  if (key === 'cost') {
-    const newFees = autoFees(rows[i].cost);
+    const newFees = autoFees(rows[i].sell);
     if (newFees > 0) {
       rows[i].fees = newFees;
       const feesEl = document.getElementById(`fees-${y}-${m}-${d}-${i}`);
@@ -434,7 +420,7 @@ function calcStats(rows) {
     cost += r.cost || 0;
     rto  += r.rto  || 0;
   });
-  return { rev, ship, fees, cost, rto, net: rev-ship-fees-cost-rto };
+  return { rev, ship, fees, cost, rto, net: rev-ship-fees-cost };
 }
 
 function renderTotals(y, m, d) {
@@ -482,7 +468,7 @@ function updateSummary(y, m) {
     rev  += s.rev;  ship += s.ship;
     fees += s.fees; cost += s.cost; rto += s.rto;
   });
-  const net = rev - ship - fees - cost - rto;
+  const net = rev - ship - fees - cost;
   setText('sc-orders', orders);
   setText('sc-rev',    fmtM(rev));
   setText('sc-ship',   fmtM(ship));
@@ -502,7 +488,6 @@ function openModal(preDay) {
   const y=curY(), m=curM(), days=daysInMonth(y,m);
   const sel = document.getElementById('mDay');
   sel.innerHTML = '';
-  const todayD = isToday(y,m,new Date().getDate()) ? new Date().getDate() : null;
   for (let d=1; d<=days; d++) {
     const o = document.createElement('option');
     o.value = d;
@@ -541,22 +526,22 @@ function modalAutoFill() {
   if (c > 0) {
     document.getElementById('mCost').value = c;
     showHint('mCostHint', `Auto-set: ₹${c} (sell ${sell < 500 ? '< ₹500' : '≥ ₹500'})`);
-    const f = autoFees(c);
-    if (f > 0) {
-      document.getElementById('mFees').value = f;
-      showHint('mFeesHint', `Auto-set: ₹${f} (cost ${c < 500 ? '< ₹500' : '₹500–999'})`);
-    }
+  }
+  const f = autoFees(sell);
+  if (f > 0) {
+    document.getElementById('mFees').value = f;
+    showHint('mFeesHint', `Auto-set: ₹${f} (sell ${sell < 500 ? '< ₹500' : '≥ ₹500'})`);
   }
 }
 
-/* Modal auto-fill: Cost → Fees */
+/* Modal auto-fill: Cost change — fees stay based on selling price */
 function modalFeesAutoFill() {
-  const cost = parseFloat(document.getElementById('mCost').value)||0;
-  if (!cost) return;
-  const f = autoFees(cost);
+  const sell = parseFloat(document.getElementById('mSell').value)||0;
+  if (!sell) return;
+  const f = autoFees(sell);
   if (f > 0) {
     document.getElementById('mFees').value = f;
-    showHint('mFeesHint', `Auto-set: ₹${f} (cost ${cost < 500 ? '< ₹500' : '₹500–999'})`);
+    showHint('mFeesHint', `Auto-set: ₹${f} (sell ${sell < 500 ? '< ₹500' : '≥ ₹500'})`);
   }
 }
 
@@ -624,6 +609,143 @@ function importData(ev) {
 }
 
 /* ══════════════════════════════════
+   AUTH
+══════════════════════════════════ */
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabSignup').classList.toggle('active', !isLogin);
+  document.getElementById('loginForm').style.display = isLogin ? 'flex' : 'none';
+  document.getElementById('signupForm').style.display = isLogin ? 'none' : 'flex';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('signupError').textContent = '';
+  document.getElementById('signupError').classList.remove('success');
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
+  errEl.textContent = ''; errEl.classList.remove('success');
+
+  if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+
+  btn.textContent = 'Logging in…'; btn.disabled = true;
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) throw new Error('Could not connect. Check your internet.');
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await loadApp();
+  } catch (err) {
+    errEl.textContent = err.message || 'Login failed.';
+    btn.textContent = 'Login'; btn.disabled = false;
+  }
+}
+
+async function handleSignup() {
+  const email    = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const confirm  = document.getElementById('signupConfirm').value;
+  const errEl    = document.getElementById('signupError');
+  const btn      = document.getElementById('signupBtn');
+  errEl.textContent = ''; errEl.classList.remove('success');
+
+  if (!email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
+  if (password !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
+  if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+  btn.textContent = 'Creating account…'; btn.disabled = true;
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) throw new Error('Could not connect. Check your internet.');
+    const { error } = await sb.auth.signUp({ email, password });
+    if (error) throw error;
+    errEl.classList.add('success');
+    errEl.textContent = '✓ Account created! Check your email to confirm.';
+  } catch (err) {
+    errEl.textContent = err.message || 'Sign up failed.';
+  } finally {
+    btn.textContent = 'Create Account'; btn.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  try {
+    const sb = await initSupabaseClient();
+    if (sb) await sb.auth.signOut();
+  } catch {}
+  const loginBtn = document.getElementById('loginBtn');
+  if (loginBtn) { loginBtn.textContent = 'Login'; loginBtn.disabled = false; }
+  const emailEl = document.getElementById('tbUserEmail');
+  if (emailEl) { emailEl.textContent = ''; emailEl.style.display = 'none'; }
+  switchAuthTab('login');
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('logoutBtn').style.display = 'none';
+  store = {};
+  renderMonth();
+}
+
+async function checkAuthAndLoad() {
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) { await loadApp(); return; }
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { await loadApp(); return; }
+    // No session — stay on auth screen
+  } catch {
+    await loadApp(); // On error allow access
+  }
+}
+
+async function loadApp() {
+  document.getElementById('authScreen').classList.add('hidden');
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.style.display = '';
+  // Show logged-in email
+  try {
+    const sb = await initSupabaseClient();
+    if (sb) {
+      const { data: { user } } = await sb.auth.getUser();
+      const emailEl = document.getElementById('tbUserEmail');
+      if (emailEl && user?.email) { emailEl.textContent = user.email; emailEl.style.display = ''; }
+    }
+  } catch {}
+
+  const mainEl = document.querySelector('.main');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  try {
+    if (mainEl) mainEl.classList.add('page-loading');
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+    await loadOrdersFromSupabase();
+    renderMonth();
+    showToast('✓ App loaded');
+  } catch (error) {
+    console.error('✗ App load failed:', error);
+    showToast('✗ Failed to load data');
+  } finally {
+    if (mainEl) mainEl.classList.remove('page-loading');
+    if (loadingOverlay) loadingOverlay.classList.add('hidden');
+  }
+}
+
+/* ══════════════════════════════════
+   THEME TOGGLE
+══════════════════════════════════ */
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+function initTheme() {
+  if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+  document.documentElement.classList.remove('dark-pre');
+}
+
+/* ══════════════════════════════════
    TOAST
 ══════════════════════════════════ */
 function showToast(msg) {
@@ -640,7 +762,6 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
    INIT
 ══════════════════════════════════ */
 (async function(){
-  // Wait for DOM to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
   } else {
@@ -648,44 +769,10 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
   }
 
   async function initApp() {
-    const mainEl = document.querySelector('.main');
-    const loadingOverlay = document.getElementById('loadingOverlay');
-
-    try {
-      console.log('🚀 Initializing Sales Calculator App...');
-
-      // Check if required elements exist
-      const requiredElements = ['selMonth', 'selYear', 'daysWrap', 'loadingOverlay'];
-      const missingElements = requiredElements.filter(id => !document.getElementById(id));
-
-      if (missingElements.length > 0) {
-        console.error('✗ Missing required DOM elements:', missingElements);
-        showToast('✗ App initialization failed - missing elements');
-        return;
-      }
-
-      const n = new Date();
-      document.getElementById('selMonth').value = n.getMonth();
-      document.getElementById('selYear').value = n.getFullYear();
-
-      if (mainEl) mainEl.classList.add('page-loading');
-      if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-
-      console.log('📊 Loading data from Supabase...');
-      await loadOrdersFromSupabase();
-
-      console.log('🎨 Rendering month view...');
-      renderMonth();
-
-      console.log('✅ App initialized successfully');
-      showToast('✓ App loaded');
-
-    } catch (error) {
-      console.error('✗ App initialization failed:', error);
-      showToast('✗ App failed to load');
-    } finally {
-      if (mainEl) mainEl.classList.remove('page-loading');
-      if (loadingOverlay) loadingOverlay.classList.add('hidden');
-    }
+    initTheme();
+    const n = new Date();
+    document.getElementById('selMonth').value = n.getMonth();
+    document.getElementById('selYear').value  = n.getFullYear();
+    await checkAuthAndLoad();
   }
 })();

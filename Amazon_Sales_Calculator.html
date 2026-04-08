@@ -4,7 +4,9 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Amazon Sales Calculator</title>
+<script>if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark-pre');</script>
 <style>
+html.dark-pre { background: #0D1117; }
 /* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 input[type=number]::-webkit-inner-spin-button,
@@ -29,8 +31,159 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   --txt1:    #131921;
   --txt2:    #5A6475;
   --r:       10px;
+  --transition: background-color .3s ease, border-color .3s ease, color .3s ease, box-shadow .3s ease;
 }
-body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--bg); color: var(--txt1); min-height: 100vh; font-size: 14px; }
+
+/* ════════ DARK MODE VARIABLES ════════ */
+body.dark-mode {
+  --bg:      #0D1117;
+  --card:    #161B22;
+  --border:  #2D3748;
+  --th-bg:   #1C2231;
+  --row-alt: #131825;
+  --hover:   #1E2740;
+  --txt1:    #E6EDF3;
+  --txt2:    #8B96A8;
+  --dark:    #080C12;
+  --navy:    #111827;
+  --slate:   #1E2A3B;
+  --green:   #23C55E;
+  --red:     #F4524D;
+  --blue:    #60A5FA;
+  --purple:  #A78BFA;
+}
+
+/* ════════ SMOOTH TRANSITIONS ════════ */
+body, .topbar, .sc, .day-block, .day-hdr, .stat-col, .dh-left,
+.controls, .ctrl-select, .ctrl-year, .modal, .overlay,
+table, thead, th, td, tfoot tr td, .add-row-btn, .del-btn,
+.week-label-line, .loading-overlay, .tb-btn.ghost {
+  transition: var(--transition);
+}
+
+/* ════════ AUTH SCREEN ════════ */
+.auth-screen {
+  position: fixed; inset: 0; z-index: 3000;
+  background: #111418;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.auth-screen.hidden { display: none; }
+.auth-card { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
+.auth-logo { font-size: 34px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 3px; text-align: center; line-height: 1.15; margin-bottom: 8px; }
+.auth-sub { font-size: 13px; color: #6B7A8D; letter-spacing: 1.5px; text-align: center; margin-bottom: 32px; text-transform: uppercase; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; background: #1A1F2E; border-radius: 10px; padding: 4px; gap: 4px; margin-bottom: 28px; border: 1px solid #252D3D; }
+.auth-tab { padding: 12px; border: none; border-radius: 7px; font-size: 15px; font-weight: 700; cursor: pointer; background: transparent; color: #5A6A88; transition: all .25s; font-family: inherit; }
+.auth-tab.active { background: var(--orange); color: #fff; box-shadow: 0 3px 12px rgba(255,153,0,.4); }
+.auth-tab:not(.active):hover { color: #A0AEBF; }
+.auth-form { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field label { font-size: 11px; font-weight: 700; color: #6B7A8D; letter-spacing: 1.2px; text-transform: uppercase; }
+.auth-field input { width: 100%; padding: 14px 16px; background: #1A1F2E; border: 1.5px solid #252D3D; border-radius: 8px; color: #E6EDF3; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
+.auth-field input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,153,0,.15); }
+.auth-field input::placeholder { color: #3A4A62; }
+.auth-error { min-height: 18px; font-size: 13px; font-weight: 600; text-align: center; color: #F4524D; transition: color .2s; }
+.auth-error.success { color: #23C55E; }
+.auth-btn { width: 100%; padding: 15px; background: var(--orange); color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; transition: background .2s, transform .1s, box-shadow .2s; box-shadow: 0 4px 16px rgba(255,153,0,.3); margin-top: 4px; }
+.auth-btn:hover { background: #E88A00; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,153,0,.4); }
+.auth-btn:active { transform: translateY(0); }
+.auth-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* ════════ THEME TOGGLE BUTTON ════════ */
+.theme-toggle {
+  background: none; border: none; cursor: pointer; padding: 4px;
+  display: flex; align-items: center; gap: 8px; border-radius: 20px;
+}
+.toggle-track {
+  width: 52px; height: 28px; border-radius: 14px;
+  background: rgba(255,255,255,.15);
+  border: 1.5px solid rgba(255,255,255,.25);
+  position: relative; display: flex; align-items: center;
+  transition: background .35s ease, border-color .35s ease;
+  flex-shrink: 0;
+}
+.toggle-thumb {
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  position: absolute; left: 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; line-height: 1;
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1), background .35s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.toggle-thumb::before { content: '☀️'; }
+body.dark-mode .toggle-track {
+  background: rgba(255,153,0,.25); border-color: rgba(255,153,0,.5);
+  box-shadow: 0 0 12px rgba(255,153,0,.2);
+}
+body.dark-mode .toggle-thumb {
+  transform: translateX(24px); background: var(--orange);
+  box-shadow: 0 2px 10px rgba(255,153,0,.5);
+}
+body.dark-mode .toggle-thumb::before { content: '🌙'; }
+
+/* ════════ DARK MODE — SPECIFIC OVERRIDES ════════ */
+body.dark-mode .page-title { color: var(--txt1); }
+body.dark-mode .ctrl-mpill { background: rgba(255,153,0,.15); border: 1px solid rgba(255,153,0,.3); }
+body.dark-mode .sc { background: var(--card); border-color: #2A3348; box-shadow: 0 1px 6px rgba(0,0,0,.4); }
+body.dark-mode .sc:hover { border-color: rgba(255,153,0,.4); box-shadow: 0 6px 24px rgba(255,153,0,.1), 0 2px 8px rgba(0,0,0,.5); }
+body.dark-mode .day-block { background: var(--card); border-color: #252D3D; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+body.dark-mode .day-block:hover:not(.expanded) { border-color: #3A4560; box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+body.dark-mode .day-block.has-data  { border-color: #1D3A2D; }
+body.dark-mode .day-block.today     { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(255,153,0,.2), 0 0 20px rgba(255,153,0,.08); }
+body.dark-mode .day-block.expanded  { border-color: #3A4560; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+body.dark-mode .day-hdr:hover { background: #1C2334; }
+body.dark-mode .day-block.today:not(.expanded) .day-hdr { background: linear-gradient(100deg, #1E1A0D 0%, #1C1908 55%, #161B22 100%); }
+body.dark-mode .dh-left { border-right-color: #252D3D; }
+body.dark-mode .dh-circle { background: #1E2740; color: #6B7A99; }
+body.dark-mode .day-block.weekend:not(.today) .dh-circle { background: #261D3A; color: var(--purple); }
+body.dark-mode .day-block.has-data:not(.today):not(.weekend) .dh-circle { background: #0F2A1E; color: var(--green); }
+body.dark-mode .stat-col { border-right-color: #252D3D; }
+body.dark-mode .dh-stats:hover .stat-col { background: rgba(255,255,255,.02); }
+body.dark-mode .dh-stats:hover .stat-col:hover { background: rgba(255,255,255,.04); }
+body.dark-mode .dh-chev { background: #1E2740; color: var(--txt2); }
+body.dark-mode .day-hdr:hover .dh-chev:not(.day-block.expanded .dh-chev) { background: #253050; }
+body.dark-mode .dh-qadd { border-color: #3A4560; color: #5A6A88; }
+body.dark-mode .dh-qadd:hover { background: #1A1400 !important; border-color: var(--orange) !important; }
+body.dark-mode .week-label-line { background: #252D3D; }
+body.dark-mode .week-label-text { color: #4A5568; }
+body.dark-mode thead tr { background: var(--th-bg); }
+body.dark-mode th { color: #5A6A88; border-right-color: #252D3D; }
+body.dark-mode th:first-child { border-left-color: var(--orange); }
+body.dark-mode td { border-bottom-color: #1E2740; border-right-color: #1A2035; }
+body.dark-mode tbody tr.dr:hover td:first-child { border-left-color: var(--orange); }
+body.dark-mode tfoot tr td { background: #111827; color: #5A6A88; border-top-color: #252D3D; }
+body.dark-mode tfoot tr td:first-child { color: var(--txt1); border-left-color: var(--orange); }
+body.dark-mode .tv.dark { color: #A0AEBF; }
+body.dark-mode .ci::placeholder { color: #4A5A72; -webkit-text-fill-color: #4A5A72; opacity: 1; }
+body.dark-mode td { color: var(--txt1); }
+body.dark-mode tbody tr.dr { color: var(--txt1); }
+body.dark-mode .ci { color: var(--txt1) !important; background: transparent; -webkit-text-fill-color: var(--txt1); }
+body.dark-mode .ci::placeholder { color: #3D4F68; -webkit-text-fill-color: #3D4F68; opacity: 1; }
+body.dark-mode .ci:focus { background: #1A2540; box-shadow: 0 0 0 2px var(--orange); }
+body.dark-mode .pb.pos { color: var(--green); background: #0D2A1A; }
+body.dark-mode .pb.neg { color: var(--red);   background: #2A0D0D; }
+body.dark-mode .pb.zer { color: var(--txt2);  background: #1A2030; }
+body.dark-mode .del-btn { background: #1E2740; border-color: #2D3748; color: #5A6A88; }
+body.dark-mode .del-btn:hover { background: #2A0D0D; border-color: #4A1515; color: var(--red); }
+body.dark-mode .add-row-btn { background: #111827; border-color: #2D3748; color: var(--txt2); }
+body.dark-mode .add-row-btn:hover { background: #1A1400; border-color: var(--orange); color: var(--orange); }
+body.dark-mode .overlay { background: rgba(0,0,0,.7); }
+body.dark-mode .modal { background: #161B22; border: 1px solid #2D3748; box-shadow: 0 28px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,153,0,.08); }
+body.dark-mode .modal-title { color: var(--txt1); }
+body.dark-mode .fg label { color: var(--txt2); }
+body.dark-mode .fg input, body.dark-mode .fg select { background: #0D1117; color: var(--txt1); border-color: #2D3748; }
+body.dark-mode .fg input:focus, body.dark-mode .fg select:focus { border-color: var(--orange); }
+body.dark-mode .m-btn.cancel { background: #1E2740; color: var(--txt1); }
+body.dark-mode .m-btn.cancel:hover { background: #253050; }
+body.dark-mode .auto-hint { color: #FF9900; }
+body.dark-mode .toast { background: #1C2231; border: 1px solid #2D3748; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+body.dark-mode .loading-overlay { background: rgba(13,17,23,.85); }
+body.dark-mode .loading-spinner { border-color: #2D3748; border-top-color: var(--orange); }
+body.dark-mode ::-webkit-scrollbar-track { background: #0D1117; }
+body.dark-mode ::-webkit-scrollbar-thumb { background: #2D3748; }
+body.dark-mode ::-webkit-scrollbar-thumb:hover { background: #3D4F68; }
+
+body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--bg); color: var(--txt1); min-height: 100vh; font-size: 15px; }
 
 /* ════════ TOP BAR ════════ */
 .topbar {
@@ -40,21 +193,22 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
   box-shadow: 0 2px 12px rgba(0,0,0,.45);
 }
 .tb-brand { display: flex; align-items: center; gap: 10px; }
-.tb-logo  { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -.5px; }
+.tb-logo  { font-size: 23px; font-weight: 800; color: #fff; letter-spacing: -.5px; }
 .tb-logo span { color: var(--orange); }
 .tb-pill  { background: var(--orange); color: var(--dark); font-size: 10px; font-weight: 800; letter-spacing: .6px; padding: 3px 9px; border-radius: 20px; }
 .tb-actions { display: flex; align-items: center; gap: 6px; }
-.tb-btn { padding: 8px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity .15s, transform .1s; display: flex; align-items: center; gap: 5px; min-height: 32px; }
+.tb-btn { padding: 8px 14px; border-radius: 6px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s, transform .1s; display: flex; align-items: center; gap: 5px; min-height: 32px; }
 .tb-btn:hover { opacity: .85; transform: translateY(-1px); }
 .tb-btn.primary { background: var(--orange); color: var(--dark); }
 .tb-btn.ghost   { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.2); }
 .tb-btn.success { background: #2ECC71; color: #fff; }
 .tb-btn-text { display: inline; }
+.tb-user-email { font-size: 12px; color: rgba(255,255,255,.6); font-weight: 600; white-space: nowrap; padding: 0 4px; }
 
 /* ════════ MAIN ════════ */
 .main { max-width: 1500px; margin: 0 auto; padding: 24px 20px 72px; }
-.page-title { font-size: 24px; font-weight: 800; color: var(--dark); margin-bottom: 2px; }
-.page-sub   { font-size: 13px; color: var(--txt2); margin-bottom: 22px; line-height: 1.5; }
+.page-title { font-size: 27px; font-weight: 800; color: var(--dark); margin-bottom: 2px; }
+.page-sub   { font-size: 14px; color: var(--txt2); margin-bottom: 22px; line-height: 1.5; }
 
 /* ════════ CONTROLS ════════ */
 .controls {
@@ -62,20 +216,20 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
   display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
   margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
-.ctrl-lbl { font-size: 11px; font-weight: 700; color: #8fa0b0; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.ctrl-lbl { font-size: 12px; font-weight: 700; color: #8fa0b0; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
 .ctrl-sw { position: relative; display: flex; align-items: center; }
 .ctrl-sw::after { content:'▾'; position:absolute; right:9px; color:var(--orange); pointer-events:none; font-size:12px; }
 .ctrl-select, .ctrl-year {
   background: var(--slate); color: #fff;
   border: 1.5px solid rgba(255,255,255,.12); border-radius: 6px;
-  padding: 7px 30px 7px 12px; font-size: 13px; font-weight: 600; min-height: 36px;
+  padding: 7px 30px 7px 12px; font-size: 14px; font-weight: 600; min-height: 36px;
   outline: none; appearance: none; cursor: pointer; transition: border-color .15s;
 }
 .ctrl-year { width: auto; }
 .ctrl-select:focus, .ctrl-year:focus { border-color: var(--orange); }
 .ctrl-div   { width: 1px; height: 28px; background: rgba(255,255,255,.15); }
 .ctrl-spc   { flex: 1; }
-.ctrl-mpill { background: rgba(255,153,0,.2); color: var(--orange); font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px; white-space: nowrap; }
+.ctrl-mpill { background: rgba(255,153,0,.2); color: var(--orange); font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 20px; white-space: nowrap; }
 .ctrl-buttons { display: flex; gap: 8px; }
 .ctrl-buttons .tb-btn { padding: 6px 12px; font-size: 11px; min-height: 32px; }
 
@@ -83,13 +237,13 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
 .sum-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
 .sc { background: var(--card); border-radius: var(--r); border: 1.5px solid var(--border); padding: 16px 14px; box-shadow: 0 1px 4px rgba(0,0,0,.05); transition: transform .15s, box-shadow .15s; }
 .sc:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,.1); }
-.sc-lbl { font-size: 10px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-.sc-val { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sc-lbl { font-size: 11px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.sc-val { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .sc-val.orange { color: var(--orange); }
 .sc-val.green  { color: var(--green);  }
 .sc-val.red    { color: var(--red);    }
 .sc-val.blue   { color: var(--blue);   }
-.sc-sub { font-size: 10px; color: var(--txt2); margin-top: 3px; }
+.sc-sub { font-size: 11px; color: var(--txt2); margin-top: 3px; }
 
 /* ════════ DAYS WRAPPER ════════ */
 .days-wrap { display: flex; flex-direction: column; gap: 5px; }
@@ -101,7 +255,7 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
   padding: 10px 4px 4px;
 }
 .week-label-text {
-  font-size: 10.5px; font-weight: 800; color: #A0AABB;
+  font-size: 12px; font-weight: 800; color: #A0AABB;
   text-transform: uppercase; letter-spacing: .6px; white-space: nowrap;
 }
 .week-label-line { flex: 1; height: 1px; background: #E4E7EC; }
@@ -176,12 +330,12 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
 /* Day text */
 .dh-info { min-width: 105px; }
 .dh-dayname {
-  font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+  font-size: 12px; font-weight: 800; text-transform: uppercase;
   letter-spacing: .7px; color: var(--txt2); margin-bottom: 2px;
 }
 .day-block.weekend:not(.today):not(.expanded) .dh-dayname { color: var(--purple); }
 .day-block.today:not(.expanded) .dh-dayname { color: var(--orange); }
-.dh-date { font-size: 13.5px; font-weight: 700; color: var(--txt1); }
+.dh-date { font-size: 15px; font-weight: 700; color: var(--txt1); }
 
 /* (dh-vdiv replaced by dh-left border-right) */
 
@@ -212,12 +366,12 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
 .dh-stats:hover .stat-col:hover { background: rgba(0,0,0,.03); }
 
 .stat-lbl {
-  font-size: 9.5px; font-weight: 800;
+  font-size: 11px; font-weight: 800;
   text-transform: uppercase; letter-spacing: .7px;
   color: #A0AABB; white-space: nowrap;
 }
 .stat-val {
-  font-size: 15px; font-weight: 800;
+  font-size: 17px; font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap; letter-spacing: -.3px;
   line-height: 1.1;
@@ -248,7 +402,7 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
 /* Today badge */
 .today-tag {
   background: var(--orange); color: #fff;
-  font-size: 10px; font-weight: 800; padding: 3px 9px;
+  font-size: 12px; font-weight: 800; padding: 3px 9px;
   border-radius: 12px; letter-spacing: .5px; white-space: nowrap;
   box-shadow: 0 1px 4px rgba(255,153,0,.4);
 }
@@ -259,7 +413,7 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
   flex: 1; height: 100%;
 }
 .dh-empty {
-  font-size: 12px; color: #BCC5D0; font-weight: 500;
+  font-size: 13px; color: #BCC5D0; font-weight: 500;
   letter-spacing: .2px;
 }
 .day-block.expanded .dh-empty { color: rgba(255,255,255,.35) !important; }
@@ -267,7 +421,7 @@ body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; background: var(--
 /* Quick-add hover button */
 .dh-qadd {
   background: none; border: 1.5px dashed #D0D6DE; color: #A8B2BE;
-  padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;
+  padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 700;
   cursor: pointer; opacity: 0; transition: all .15s; white-space: nowrap;
   flex-shrink: 0;
 }
@@ -297,7 +451,7 @@ table { width: 100%; border-collapse: collapse; min-width: 960px; font-variant-n
 /* Header */
 thead tr { background: var(--th-bg); border-bottom: 2px solid var(--border); }
 th {
-  padding: 10px 14px; font-size: 11px; font-weight: 700;
+  padding: 10px 14px; font-size: 12px; font-weight: 700;
   color: var(--txt2); text-transform: uppercase; letter-spacing: .5px;
   white-space: nowrap; border-right: 1px solid var(--border);
   text-align: center; vertical-align: middle;
@@ -321,7 +475,7 @@ tbody tr.dr:hover td:first-child { border-left-color: var(--orange); }
 /* Cell inputs */
 .ci {
   width: 100%; border: none; background: transparent;
-  font-size: 13px; font-family: inherit; color: var(--txt1);
+  font-size: 14px; font-family: inherit; color: var(--txt1);
   outline: none; padding: 3px 6px; border-radius: 5px;
   transition: background .12s, box-shadow .12s;
   font-variant-numeric: tabular-nums;
@@ -333,7 +487,7 @@ tbody tr.dr:hover td:first-child { border-left-color: var(--orange); }
 /* Profit badge */
 .pb {
   display: block; text-align: center;
-  font-size: 13px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   padding: 4px 10px; border-radius: 6px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -357,7 +511,7 @@ tbody tr.dr:hover td:first-child { border-left-color: var(--orange); }
   margin: 10px 16px 12px; width: calc(100% - 32px);
   padding: 9px; background: #F7F8FA;
   border: 1.5px dashed #C5CDD6; color: var(--txt2);
-  font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;
+  font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: all .15s;
 }
@@ -365,13 +519,13 @@ tbody tr.dr:hover td:first-child { border-left-color: var(--orange); }
 
 /* Totals row */
 tfoot tr td {
-  background: #EEF2F7; font-size: 12px; font-weight: 800;
+  background: #EEF2F7; font-size: 13px; font-weight: 800;
   color: var(--txt2); text-transform: uppercase; letter-spacing: .3px;
   border-top: 2px solid var(--border); border-bottom: none;
   padding: 10px 14px; text-align: center; vertical-align: middle;
 }
 tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orange); text-align: left; }
-.tv { font-size: 13px; font-variant-numeric: tabular-nums; display: block; text-align: center; }
+.tv { font-size: 14px; font-variant-numeric: tabular-nums; display: block; text-align: center; }
 .tv.green  { color: var(--green);  font-weight: 800; }
 .tv.red    { color: var(--red);    font-weight: 800; }
 .tv.blue   { color: var(--blue);   font-weight: 800; }
@@ -390,23 +544,23 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
   transform: translateY(14px); transition: transform .2s;
 }
 .overlay.on .modal { transform: translateY(0); }
-.modal-title { font-size: 17px; font-weight: 800; margin-bottom: 18px; }
+.modal-title { font-size: 19px; font-weight: 800; margin-bottom: 18px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .form-row.single { grid-template-columns: 1fr; }
-.fg label { font-size: 11px; font-weight: 700; color: var(--txt2); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+.fg label { font-size: 12px; font-weight: 700; color: var(--txt2); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
 .fg input, .fg select {
   width: 100%; padding: 9px 11px; border: 1.5px solid var(--border);
-  border-radius: 7px; font-size: 13px; font-family: inherit; outline: none;
+  border-radius: 7px; font-size: 14px; font-family: inherit; outline: none;
   transition: border-color .15s;
 }
 .fg input[type=number]::-webkit-inner-spin-button,
 .fg input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 .fg input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .fg input:focus, .fg select:focus { border-color: var(--orange); }
-.auto-hint { font-size: 10px; color: var(--orange); margin-top: 3px; font-weight: 600; display: none; }
+.auto-hint { font-size: 11px; color: var(--orange); margin-top: 3px; font-weight: 600; display: none; }
 .auto-hint.show { display: block; }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
-.m-btn { padding: 9px 20px; border-radius: 7px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
+.m-btn { padding: 9px 20px; border-radius: 7px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
 .m-btn.ok { background: var(--orange); color: var(--dark); }
 .m-btn.ok:hover { background: #E88A00; }
 .m-btn.cancel { background: #F0F2F5; color: var(--txt1); }
@@ -416,7 +570,7 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
 .toast {
   position: fixed; bottom: 26px; right: 26px;
   background: var(--dark); color: #fff; padding: 11px 18px;
-  border-radius: 8px; font-size: 13px; font-weight: 600;
+  border-radius: 8px; font-size: 14px; font-weight: 600;
   box-shadow: 0 8px 28px rgba(0,0,0,.22); z-index: 9999;
   display: flex; align-items: center; gap: 8px;
   transform: translateY(20px); opacity: 0; transition: all .25s;
@@ -591,19 +745,56 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
 </head>
 <body>
 
+<!-- ════ AUTH SCREEN ════ -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">Amazon Sales<br/>Calculator</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
+      <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+    <div class="auth-form" id="loginForm">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com" value="urbandrip.net@gmail.com" onkeydown="if(event.key==='Enter')handleLogin()"/>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()"/>
+      </div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="auth-btn" id="loginBtn" onclick="handleLogin()">Login</button>
+    </div>
+    <div class="auth-form" id="signupForm" style="display:none">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="signupEmail" placeholder="your@email.com"/>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="signupPassword" placeholder="••••••••"/>
+      </div>
+      <div class="auth-field">
+        <label>Confirm Password</label>
+        <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleSignup()"/>
+      </div>
+      <div class="auth-error" id="signupError"></div>
+      <button class="auth-btn" id="signupBtn" onclick="handleSignup()">Create Account</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="tb-brand">
     <div class="tb-logo">Amazon Sales Calculator</div>
   </div>
   <div class="tb-actions">
-    <button class="tb-btn ghost" onclick="exportData()">⬇ Export</button>
-    <label class="tb-btn ghost" style="cursor:pointer">
-      ⬆ Import
-      <input type="file" accept=".json" style="display:none" onchange="importData(event)">
-    </label>
-    <button class="tb-btn ghost" onclick="window.print()">🖨 Print</button>
-    <button class="tb-btn success" onclick="openModal()">+ Quick Add Order</button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark / light mode" id="themeToggleBtn">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+    <span class="tb-user-email" id="tbUserEmail" style="display:none"></span>
+    <button class="tb-btn ghost" onclick="handleLogout()" title="Logout" id="logoutBtn" style="display:none">⏻ Logout</button>
   </div>
 </div>
 
@@ -647,6 +838,7 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
     <div class="ctrl-div"></div>
     <button class="tb-btn ghost" style="font-size:12px;padding:6px 12px" onclick="expandAll()">↕ Expand All</button>
     <button class="tb-btn ghost" style="font-size:12px;padding:6px 12px" onclick="collapseAll()">↕ Collapse All</button>
+    <button class="tb-btn success" style="font-size:12px;padding:6px 14px" onclick="openModal()">+ Quick Add Order</button>
     <div class="ctrl-spc"></div>
     <div class="ctrl-mpill" id="monthPill">April 2026</div>
   </div>
@@ -659,7 +851,7 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
     <div class="sc"><div class="sc-lbl">Amazon Fees</div><div class="sc-val" id="sc-fees">₹0.00</div><div class="sc-sub">Platform fees total</div></div>
     <div class="sc"><div class="sc-lbl">Total Cost</div><div class="sc-val" id="sc-cost">₹0.00</div><div class="sc-sub">Product cost total</div></div>
     <div class="sc"><div class="sc-lbl">RTO / Loss</div><div class="sc-val red" id="sc-rto">₹0.00</div><div class="sc-sub">Returns &amp; losses</div></div>
-    <div class="sc"><div class="sc-lbl">Net Profit</div><div class="sc-val green" id="sc-net">₹0.00</div><div class="sc-sub">Rev−Ship−Fees−Cost−RTO</div></div>
+    <div class="sc"><div class="sc-lbl">Net Profit</div><div class="sc-val green" id="sc-net">₹0.00</div><div class="sc-sub">Rev−Ship−Fees−Cost</div></div>
   </div>
 
   <!-- Days -->
@@ -674,7 +866,7 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
 <!-- MODAL -->
 <div class="overlay" id="overlay" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-title">➕ Add Order Entry</div>
+    <div class="modal-title">➕ Add Order</div>
     <div class="form-row single">
       <div class="fg"><label>Day</label><select id="mDay"></select></div>
     </div>
@@ -709,7 +901,7 @@ tfoot tr td:first-child { color: var(--dark); border-left: 3px solid var(--orang
     </div>
     <div class="modal-actions">
       <button class="m-btn cancel" onclick="closeModal()">Cancel</button>
-      <button class="m-btn ok" onclick="quickAdd()">Add Entry</button>
+      <button class="m-btn ok" onclick="quickAdd()">Save</button>
     </div>
   </div>
 </div>
@@ -742,14 +934,33 @@ let supabase = null;
 
 async function initSupabaseClient() {
   if (supabase) return supabase;
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  return supabase;
+  try {
+    let createClient;
+    try {
+      const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+      createClient = module.createClient;
+    } catch (importError) {
+      if (typeof window.supabase !== 'undefined') {
+        createClient = window.supabase.createClient;
+      } else {
+        throw new Error('Supabase library not available');
+      }
+    }
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    return supabase;
+  } catch (error) {
+    console.warn('Continuing without Supabase - data will be local only');
+    return null;
+  }
 }
 
 async function loadOrdersFromSupabase() {
   try {
     const sb = await initSupabaseClient();
+    if (!sb) {
+      console.log('⚠ Supabase client not available; skipping remote load');
+      return;
+    }
     const { data, error } = await sb.from('orders').select('*').order('created_at', { ascending: true });
     if (error) throw error;
     store = {};
@@ -759,15 +970,15 @@ async function loadOrdersFromSupabase() {
         id: o.id,
         sku: o.sku || '',
         sell: Number(o.sell) || 0,
-        ship: Number(o.ship) || 0,
+        ship: Number(o.ship) || DEF_SHIP,
         fees: Number(o.fees) || 0,
         cost: Number(o.cost) || 0,
         rto: Number(o.rto) || 0
       });
     });
   } catch (err) {
-    console.warn('Supabase load failed', err);
-    showToast('⚠ Supabase load failed');
+    console.warn('⚠ Supabase load failed, continuing with local data:', err);
+    showToast('⚠ Using local data only');
   }
 }
 
@@ -776,13 +987,15 @@ async function saveOrderToSupabase(y, m, d, i) {
   if (!row) return;
   try {
     const sb = await initSupabaseClient();
+    const { data: { user } } = await sb.auth.getUser();
     const payload = {
+      user_id: user.id,
       year: y,
       month: m,
       day: d,
       sku: row.sku || '',
       sell: row.sell === undefined || row.sell === '' ? 0 : row.sell,
-      ship: row.ship === undefined || row.ship === '' ? 0 : row.ship,
+      ship: (row.ship === undefined || row.ship === '' || row.ship === 0) ? DEF_SHIP : row.ship,
       fees: row.fees === undefined || row.fees === '' ? 0 : row.fees,
       cost: row.cost === undefined || row.cost === '' ? 0 : row.cost,
       rto: row.rto === undefined || row.rto === '' ? 0 : row.rto
@@ -832,14 +1045,14 @@ function autoCost(sell) {
   if (sell >= 500)              return 300;
   return 0;
 }
-function autoFees(cost) {
-  if (cost > 0   && cost < 500) return 25.96;
-  if (cost >= 500 && cost < 999) return 53.10;
+function autoFees(sell) {
+  if (sell > 0  && sell < 500) return 25.96;
+  if (sell >= 500)             return 53.10;
   return 0;
 }
 
 function rowProfit(r) {
-  return (r.sell||0) - (r.ship||0) - (r.fees||0) - (r.cost||0) - (r.rto||0);
+  return (r.sell||0) - (r.ship||0) - (r.fees||0) - (r.cost||0);
 }
 
 /* ══════════════════════════════════
@@ -1015,7 +1228,7 @@ function appendRowEl(y, m, d, i, block) {
   tr.className = 'dr';
   tr.id = `row-${y}-${m}-${d}-${i}`;
 
-  const shipVal = r.ship !== undefined ? r.ship : '';
+  const shipVal = r.ship || '';
 
   tr.innerHTML = `
     <td><input class="ci ci-sku" type="text" placeholder="Order name / SKU"
@@ -1063,17 +1276,7 @@ async function setNum(y, m, d, i, key, val) {
       const costEl = document.getElementById(`cost-${y}-${m}-${d}-${i}`);
       if (costEl) costEl.value = newCost;
     }
-    const newFees = autoFees(rows[i].cost);
-    if (newFees > 0) {
-      rows[i].fees = newFees;
-      const feesEl = document.getElementById(`fees-${y}-${m}-${d}-${i}`);
-      if (feesEl) feesEl.value = newFees;
-    }
-  }
-
-  /* ── AUTO-FILL: Cost → Fees ── */
-  if (key === 'cost') {
-    const newFees = autoFees(rows[i].cost);
+    const newFees = autoFees(rows[i].sell);
     if (newFees > 0) {
       rows[i].fees = newFees;
       const feesEl = document.getElementById(`fees-${y}-${m}-${d}-${i}`);
@@ -1108,7 +1311,7 @@ function calcStats(rows) {
     cost += r.cost || 0;
     rto  += r.rto  || 0;
   });
-  return { rev, ship, fees, cost, rto, net: rev-ship-fees-cost-rto };
+  return { rev, ship, fees, cost, rto, net: rev-ship-fees-cost };
 }
 
 function renderTotals(y, m, d) {
@@ -1156,7 +1359,7 @@ function updateSummary(y, m) {
     rev  += s.rev;  ship += s.ship;
     fees += s.fees; cost += s.cost; rto += s.rto;
   });
-  const net = rev - ship - fees - cost - rto;
+  const net = rev - ship - fees - cost;
   setText('sc-orders', orders);
   setText('sc-rev',    fmtM(rev));
   setText('sc-ship',   fmtM(ship));
@@ -1215,22 +1418,22 @@ function modalAutoFill() {
   if (c > 0) {
     document.getElementById('mCost').value = c;
     showHint('mCostHint', `Auto-set: ₹${c} (sell ${sell < 500 ? '< ₹500' : '≥ ₹500'})`);
-    const f = autoFees(c);
-    if (f > 0) {
-      document.getElementById('mFees').value = f;
-      showHint('mFeesHint', `Auto-set: ₹${f} (cost ${c < 500 ? '< ₹500' : '₹500–999'})`);
-    }
+  }
+  const f = autoFees(sell);
+  if (f > 0) {
+    document.getElementById('mFees').value = f;
+    showHint('mFeesHint', `Auto-set: ₹${f} (sell ${sell < 500 ? '< ₹500' : '≥ ₹500'})`);
   }
 }
 
-/* Modal auto-fill: Cost → Fees */
+/* Modal auto-fill: Cost change — fees stay based on selling price */
 function modalFeesAutoFill() {
-  const cost = parseFloat(document.getElementById('mCost').value)||0;
-  if (!cost) return;
-  const f = autoFees(cost);
+  const sell = parseFloat(document.getElementById('mSell').value)||0;
+  if (!sell) return;
+  const f = autoFees(sell);
   if (f > 0) {
     document.getElementById('mFees').value = f;
-    showHint('mFeesHint', `Auto-set: ₹${f} (cost ${cost < 500 ? '< ₹500' : '₹500–999'})`);
+    showHint('mFeesHint', `Auto-set: ₹${f} (sell ${sell < 500 ? '< ₹500' : '≥ ₹500'})`);
   }
 }
 
@@ -1298,6 +1501,129 @@ function importData(ev) {
 }
 
 /* ══════════════════════════════════
+   AUTH
+══════════════════════════════════ */
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabSignup').classList.toggle('active', !isLogin);
+  document.getElementById('loginForm').style.display = isLogin ? 'flex' : 'none';
+  document.getElementById('signupForm').style.display = isLogin ? 'none' : 'flex';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('signupError').textContent = '';
+  document.getElementById('signupError').classList.remove('success');
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
+  errEl.textContent = ''; errEl.classList.remove('success');
+  if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+  btn.textContent = 'Logging in…'; btn.disabled = true;
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) throw new Error('Could not connect. Check your internet.');
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await loadApp();
+  } catch (err) {
+    errEl.textContent = err.message || 'Login failed.';
+    btn.textContent = 'Login'; btn.disabled = false;
+  }
+}
+
+async function handleSignup() {
+  const email    = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const confirm  = document.getElementById('signupConfirm').value;
+  const errEl    = document.getElementById('signupError');
+  const btn      = document.getElementById('signupBtn');
+  errEl.textContent = ''; errEl.classList.remove('success');
+  if (!email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
+  if (password !== confirm)            { errEl.textContent = 'Passwords do not match.'; return; }
+  if (password.length < 6)             { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  btn.textContent = 'Creating account…'; btn.disabled = true;
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) throw new Error('Could not connect. Check your internet.');
+    const { error } = await sb.auth.signUp({ email, password });
+    if (error) throw error;
+    errEl.classList.add('success');
+    errEl.textContent = '✓ Account created! Check your email to confirm.';
+  } catch (err) {
+    errEl.textContent = err.message || 'Sign up failed.';
+  } finally {
+    btn.textContent = 'Create Account'; btn.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  try { const sb = await initSupabaseClient(); if (sb) await sb.auth.signOut(); } catch {}
+  const loginBtn = document.getElementById('loginBtn');
+  if (loginBtn) { loginBtn.textContent = 'Login'; loginBtn.disabled = false; }
+  const emailEl = document.getElementById('tbUserEmail');
+  if (emailEl) { emailEl.textContent = ''; emailEl.style.display = 'none'; }
+  switchAuthTab('login');
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('logoutBtn').style.display = 'none';
+  store = {}; renderMonth();
+}
+
+async function checkAuthAndLoad() {
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) { await loadApp(); return; }
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { await loadApp(); return; }
+  } catch { await loadApp(); }
+}
+
+async function loadApp() {
+  document.getElementById('authScreen').classList.add('hidden');
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.style.display = '';
+  try {
+    const sb = await initSupabaseClient();
+    if (sb) {
+      const { data: { user } } = await sb.auth.getUser();
+      const emailEl = document.getElementById('tbUserEmail');
+      if (emailEl && user?.email) { emailEl.textContent = user.email; emailEl.style.display = ''; }
+    }
+  } catch {}
+  const mainEl = document.querySelector('.main');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  try {
+    if (mainEl) mainEl.classList.add('page-loading');
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+    await loadOrdersFromSupabase();
+    renderMonth();
+    showToast('✓ App loaded');
+  } catch (error) {
+    showToast('✗ Failed to load data');
+  } finally {
+    if (mainEl) mainEl.classList.remove('page-loading');
+    if (loadingOverlay) loadingOverlay.classList.add('hidden');
+  }
+}
+
+/* ══════════════════════════════════
+   THEME TOGGLE
+══════════════════════════════════ */
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+function initTheme() {
+  if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+  document.documentElement.classList.remove('dark-pre');
+}
+
+/* ══════════════════════════════════
    TOAST
 ══════════════════════════════════ */
 function showToast(msg) {
@@ -1314,14 +1640,18 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
    INIT
 ══════════════════════════════════ */
 (async function(){
-  const n=new Date();
-  document.getElementById('selMonth').value=n.getMonth();
-  document.getElementById('selYear').value=n.getFullYear();
-  document.querySelector('.main').classList.add('page-loading');
-  await loadOrdersFromSupabase();
-  renderMonth();
-  document.querySelector('.main').classList.remove('page-loading');
-  document.getElementById('loadingOverlay').classList.add('hidden');
+  async function initApp() {
+    initTheme();
+    const n = new Date();
+    document.getElementById('selMonth').value = n.getMonth();
+    document.getElementById('selYear').value  = n.getFullYear();
+    await checkAuthAndLoad();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
 })();
 </script>
 </body>

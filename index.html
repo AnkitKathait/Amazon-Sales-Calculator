@@ -5,8 +5,51 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Amazon Sales Calculator</title>
   <link rel="stylesheet" href="src/css/styles.css"/>
+  <script>if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark-pre');</script>
+  <style>html.dark-pre{background:#0D1117}</style>
 </head>
 <body>
+
+<!-- ════ AUTH SCREEN ════ -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">Amazon Sales<br/>Calculator</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
+      <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+    <!-- Login Form -->
+    <div class="auth-form" id="loginForm">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com" value="urbandrip.net@gmail.com" onkeydown="if(event.key==='Enter')handleLogin()"/>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()"/>
+      </div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="auth-btn" id="loginBtn" onclick="handleLogin()">Login</button>
+    </div>
+    <!-- Sign Up Form -->
+    <div class="auth-form" id="signupForm" style="display:none">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="signupEmail" placeholder="your@email.com"/>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="signupPassword" placeholder="••••••••"/>
+      </div>
+      <div class="auth-field">
+        <label>Confirm Password</label>
+        <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleSignup()"/>
+      </div>
+      <div class="auth-error" id="signupError"></div>
+      <button class="auth-btn" id="signupBtn" onclick="handleSignup()">Create Account</button>
+    </div>
+  </div>
+</div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -14,13 +57,11 @@
     <div class="tb-logo">Amazon Sales Calculator</div>
   </div>
   <div class="tb-actions">
-    <button class="tb-btn ghost" onclick="exportData()">⬇ Export</button>
-    <label class="tb-btn ghost" style="cursor:pointer">
-      ⬆ Import
-      <input type="file" accept=".json" style="display:none" onchange="importData(event)">
-    </label>
-    <button class="tb-btn ghost" onclick="window.print()">🖨 Print</button>
-    <button class="tb-btn success" onclick="openModal()">+ Quick Add Order</button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark / light mode" id="themeToggleBtn">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+    <span class="tb-user-email" id="tbUserEmail" style="display:none"></span>
+    <button class="tb-btn ghost" onclick="handleLogout()" title="Logout" id="logoutBtn" style="display:none">⏻ Logout</button>
   </div>
 </div>
 
@@ -64,6 +105,7 @@
     <div class="ctrl-div"></div>
     <button class="tb-btn ghost" style="font-size:12px;padding:6px 12px" onclick="expandAll()">↕ Expand All</button>
     <button class="tb-btn ghost" style="font-size:12px;padding:6px 12px" onclick="collapseAll()">↕ Collapse All</button>
+    <button class="tb-btn success" style="font-size:12px;padding:6px 14px" onclick="openModal()">+ Quick Add Order</button>
     <div class="ctrl-spc"></div>
     <div class="ctrl-mpill" id="monthPill">April 2026</div>
   </div>
@@ -76,7 +118,7 @@
     <div class="sc"><div class="sc-lbl">Amazon Fees</div><div class="sc-val" id="sc-fees">₹0.00</div><div class="sc-sub">Platform fees total</div></div>
     <div class="sc"><div class="sc-lbl">Total Cost</div><div class="sc-val" id="sc-cost">₹0.00</div><div class="sc-sub">Product cost total</div></div>
     <div class="sc"><div class="sc-lbl">RTO / Loss</div><div class="sc-val red" id="sc-rto">₹0.00</div><div class="sc-sub">Returns &amp; losses</div></div>
-    <div class="sc"><div class="sc-lbl">Net Profit</div><div class="sc-val green" id="sc-net">₹0.00</div><div class="sc-sub">Rev−Ship−Fees−Cost−RTO</div></div>
+    <div class="sc"><div class="sc-lbl">Net Profit</div><div class="sc-val green" id="sc-net">₹0.00</div><div class="sc-sub">Rev−Ship−Fees−Cost</div></div>
   </div>
 
   <!-- Days -->
@@ -91,7 +133,7 @@
 <!-- MODAL -->
 <div class="overlay" id="overlay" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-title">➕ Add Order Entry</div>
+    <div class="modal-title">➕ Add Order</div>
     <div class="form-row single">
       <div class="fg"><label>Day</label><select id="mDay"></select></div>
     </div>
@@ -126,7 +168,7 @@
     </div>
     <div class="modal-actions">
       <button class="m-btn cancel" onclick="closeModal()">Cancel</button>
-      <button class="m-btn ok" onclick="quickAdd()">Add Entry</button>
+      <button class="m-btn ok" onclick="quickAdd()">Save</button>
     </div>
   </div>
 </div>
