@@ -13,7 +13,9 @@
 <!-- ════ AUTH SCREEN ════ -->
 <div class="auth-screen" id="authScreen">
   <div class="auth-card">
+    <img src="src/assets/urban-drip-logo.jpg" alt="Urban Drip" class="auth-brand-logo"/>
     <div class="auth-logo">Amazon Sales<br/>Calculator</div>
+    <div class="auth-sub">Calculate Amazon profits instantly &amp; accurately</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
       <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
@@ -21,32 +23,57 @@
     <!-- Login Form -->
     <div class="auth-form" id="loginForm">
       <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="your@email.com" value="urbandrip.net@gmail.com" onkeydown="if(event.key==='Enter')handleLogin()"/>
+        <div class="auth-input-wrap">
+          <span class="auth-input-icon">✉</span>
+          <input type="email" id="loginEmail" placeholder="Email address" value="urbandrip.net@gmail.com" onkeydown="if(event.key==='Enter')handleLogin()"/>
+        </div>
       </div>
       <div class="auth-field">
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()"/>
+        <div class="auth-input-wrap">
+          <span class="auth-input-icon">🔐</span>
+          <input type="password" id="loginPassword" placeholder="Password" onkeydown="if(event.key==='Enter')handleLogin()"/>
+          <button class="auth-eye" type="button" onclick="togglePasswordVis('loginPassword', this)" tabindex="-1">👁</button>
+        </div>
+        <div class="auth-row-between">
+          <label class="auth-remember">
+            <input type="checkbox" id="rememberMe" onchange="handleRememberMe(this)"/>
+            <span class="auth-check-box"></span>
+            Remember me
+          </label>
+          <button class="auth-forgot" type="button" onclick="handleForgotPassword()">Forgot password?</button>
+        </div>
       </div>
       <div class="auth-error" id="loginError"></div>
       <button class="auth-btn" id="loginBtn" onclick="handleLogin()">Login</button>
+      <div class="auth-switch">Don't have an account? <button class="auth-switch-btn" onclick="switchAuthTab('signup')">Sign up</button></div>
+      <div class="auth-secure">🔒 Your data is secure with us</div>
     </div>
     <!-- Sign Up Form -->
     <div class="auth-form" id="signupForm" style="display:none">
       <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="signupEmail" placeholder="your@email.com"/>
+        <div class="auth-input-wrap">
+          <span class="auth-input-icon">✉</span>
+          <input type="email" id="signupEmail" placeholder="Email address"/>
+        </div>
       </div>
       <div class="auth-field">
-        <label>Password</label>
-        <input type="password" id="signupPassword" placeholder="••••••••"/>
+        <div class="auth-input-wrap">
+          <span class="auth-input-icon">🔐</span>
+          <input type="password" id="signupPassword" placeholder="Password"/>
+          <button class="auth-eye" type="button" onclick="togglePasswordVis('signupPassword', this)" tabindex="-1">👁</button>
+        </div>
       </div>
       <div class="auth-field">
-        <label>Confirm Password</label>
-        <input type="password" id="signupConfirm" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleSignup()"/>
+        <div class="auth-input-wrap">
+          <span class="auth-input-icon">🔐</span>
+          <input type="password" id="signupConfirm" placeholder="Confirm password" onkeydown="if(event.key==='Enter')handleSignup()"/>
+          <button class="auth-eye" type="button" onclick="togglePasswordVis('signupConfirm', this)" tabindex="-1">👁</button>
+        </div>
       </div>
       <div class="auth-error" id="signupError"></div>
       <button class="auth-btn" id="signupBtn" onclick="handleSignup()">Create Account</button>
+      <div class="auth-switch">Already have an account? <button class="auth-switch-btn" onclick="switchAuthTab('login')">Login</button></div>
+      <div class="auth-secure">🔒 Your data is secure with us</div>
     </div>
   </div>
 </div>
@@ -54,8 +81,9 @@
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="tb-brand">
-    <div class="tb-logo">Amazon Sales Calculator</div>
+    <img src="src/assets/urban-drip-logo.jpg" alt="Urban Drip" class="tb-brand-logo"/>
   </div>
+  <div class="tb-logo">Amazon Sales Calculator</div>
   <div class="tb-actions">
     <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark / light mode" id="themeToggleBtn">
       <div class="toggle-track"><div class="toggle-thumb"></div></div>

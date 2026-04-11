@@ -296,7 +296,7 @@ function collapseAll()  { document.querySelectorAll('.day-block').forEach(b=>b.c
 ══════════════════════════════════ */
 function addRow(y, m, d) {
   const rows = getDayRows(y, m, d);
-  rows.push({ sku:'', sell:0, fees:0, cost:0, rto:0 });
+  rows.push({ sku:'', sell:0, ship: DEF_SHIP, fees:0, cost:0, rto:0 });
   const idx = rows.length - 1;
   appendRowEl(y, m, d, idx);
   renderTotals(y, m, d);
@@ -620,6 +620,44 @@ function switchAuthTab(tab) {
   document.getElementById('loginError').textContent = '';
   document.getElementById('signupError').textContent = '';
   document.getElementById('signupError').classList.remove('success');
+}
+
+function togglePasswordVis(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+}
+
+function handleRememberMe(cb) {
+  if (cb.checked) {
+    const email = document.getElementById('loginEmail').value.trim();
+    if (email) localStorage.setItem('rememberedEmail', email);
+  } else {
+    localStorage.removeItem('rememberedEmail');
+  }
+}
+
+async function handleForgotPassword() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const errEl = document.getElementById('loginError');
+  if (!email) {
+    errEl.textContent = 'Enter your email above first.';
+    errEl.classList.remove('success');
+    return;
+  }
+  try {
+    const sb = await initSupabaseClient();
+    if (!sb) throw new Error('Could not connect.');
+    const { error } = await sb.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    errEl.classList.add('success');
+    errEl.textContent = '✓ Reset link sent! Check your email.';
+  } catch (err) {
+    errEl.classList.remove('success');
+    errEl.textContent = err.message || 'Failed to send reset email.';
+  }
 }
 
 async function handleLogin() {
